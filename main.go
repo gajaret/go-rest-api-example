@@ -1,13 +1,13 @@
 package main
 
 import (
-	"flag"
+	"os"
+	"time"
+
 	"github.com/rameshsunkara/go-rest-api-example/internal/server"
 	"github.com/rameshsunkara/go-rest-api-example/pkg/util"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
-	"os"
-	"time"
 
 	_ "github.com/rameshsunkara/go-rest-api-example/docs"
 	"github.com/rameshsunkara/go-rest-api-example/internal/config"
@@ -20,6 +20,9 @@ const (
 	ServiceName = "ecommerce-orders"
 	DBName      = "ecommerce"
 )
+
+// Passed while building from  make file
+var version string
 
 // @title           GO Rest Example API Service (Purchase Order Tracker)
 // @version         1.0
@@ -34,30 +37,38 @@ const (
 func main() {
 	upTime := time.Now()
 
-	// Parse command line flags
-	env := flag.String("environment", "dev", "environment where this service is running")
-	v := flag.String("version", "0.0", "current version of this service")
-	flag.Parse()
+	env := os.Getenv("environment")
+	if env == "" {
+		env = "dev"
+	}
 
 	// Metadata of the service
 	serviceInfo := &models.ServiceInfo{
 		Name:        ServiceName,
 		UpTime:      upTime,
-		Environment: *env,
-		Version:     *v,
+		Environment: env,
+		Version:     version,
 	}
 
 	// Setup : Log
-	setupLog(*env)
+	setupLog(env)
+
+	log.Info().Object("Service", serviceInfo).Msg("starting")
 
 	// Load Configuration
-	config.LoadConfig(*env)
+	c, cErr := config.LoadConfig(env)
+	if cErr != nil {
+		log.Fatal().Err(cErr).Msg("unable to read configuration")
+	}
 
 	// Setup : DB
-	dbClient, database := db.Init(DBName)
+	dbManager, dErr := db.Init(DBName, c.GetString("db.dsn"))
+	if dErr != nil {
+		log.Fatal().Err(dErr).Msg("unable to initialize DB connection")
+	}
 
 	// Setup : Server
-	server.Init(serviceInfo, dbClient, database)
+	server.Init(serviceInfo, dbManager)
 
 	log.Fatal().Str("ServiceName", ServiceName).Msg("Server Exited")
 }

@@ -16,38 +16,25 @@ import (
 
 const (
 	OrdersCollection = "purchaseorders"
-	PageSize         = 100 // Ramesh derived this out of thin air
+	PageSize         = 100
 )
-
-// MongoDBDatabase - Enables mocking
-type MongoDBDatabase interface {
-	Collection(name string, opts ...*options.CollectionOptions) *mongo.Collection
-}
-
-type DataService interface {
-	Create(purchaseOrder *models.Order) (*mongo.InsertOneResult, error)
-	Update(purchaseOrder *models.Order) (int64, error)
-	GetAll() (*[]models.Order, error)
-	GetById(id string) (*models.Order, error)
-	DeleteById(id string) (int64, error)
-}
 
 type OrdersDataService struct {
 	collection *mongo.Collection
 }
 
-func NewOrderDataService(db MongoDBDatabase) *OrdersDataService {
+func NewOrderDataService(db MongoDatabase) *OrdersDataService {
 	iDBSvc := &OrdersDataService{
 		collection: db.Collection(OrdersCollection),
 	}
 	return iDBSvc
 }
 
-func (ordDataSvc *OrdersDataService) Create(purchaseOrder *models.Order) (*mongo.InsertOneResult, error) {
+func (ordDataSvc *OrdersDataService) Create(po interface{}) (*mongo.InsertOneResult, error) {
 	if vErr := validate(ordDataSvc.collection); vErr != nil {
 		return nil, vErr
 	}
-
+	purchaseOrder := po.(*models.Order)
 	if !purchaseOrder.ID.IsZero() {
 		return nil, errors.New("invalid request")
 	}
@@ -61,12 +48,13 @@ func (ordDataSvc *OrdersDataService) Create(purchaseOrder *models.Order) (*mongo
 }
 
 // Update - Create and Update can be merged using upsert, but this is to demonstrate CRUD rest API so ...
-func (ordDataSvc *OrdersDataService) Update(purchaseOrder *models.Order) (int64, error) {
+func (ordDataSvc *OrdersDataService) Update(po interface{}) (int64, error) {
 	if vErr := validate(ordDataSvc.collection); vErr != nil {
 		return 0, vErr
 	}
 
-	if primitive.ObjectID.IsZero(purchaseOrder.ID) {
+	purchaseOrder := po.(*models.Order)
+	if primitive.ObjectID.IsZero(purchaseOrder.ID) || !primitive.IsValidObjectID(purchaseOrder.ID.Hex()) {
 		return 0, errors.New("invalid request")
 	}
 
@@ -94,7 +82,7 @@ func (ordDataSvc *OrdersDataService) Update(purchaseOrder *models.Order) (int64,
 	return 0, nil
 }
 
-func (ordDataSvc *OrdersDataService) GetAll() (*[]models.Order, error) {
+func (ordDataSvc *OrdersDataService) GetAll() (interface{}, error) {
 	if vErr := validate(ordDataSvc.collection); vErr != nil {
 		return nil, vErr
 	}
@@ -115,14 +103,13 @@ func (ordDataSvc *OrdersDataService) GetAll() (*[]models.Order, error) {
 	return &results, nil
 }
 
-func (ordDataSvc *OrdersDataService) GetById(id string) (*models.Order, error) {
+func (ordDataSvc *OrdersDataService) GetById(id string) (interface{}, error) {
 	if vErr := validate(ordDataSvc.collection); vErr != nil {
 		return nil, vErr
 	}
 
-	isValidId := primitive.IsValidObjectID(id)
 	docID, err := primitive.ObjectIDFromHex(id)
-	if err != nil || !isValidId {
+	if err != nil {
 		return nil, errors.New("bad request")
 	}
 	filter := bson.D{primitive.E{Key: "_id", Value: docID}}
@@ -144,9 +131,8 @@ func (ordDataSvc *OrdersDataService) DeleteById(id string) (int64, error) {
 		return 0, vErr
 	}
 
-	isValidId := primitive.IsValidObjectID(id)
 	docID, err := primitive.ObjectIDFromHex(id)
-	if err != nil || !isValidId {
+	if err != nil {
 		return 0, errors.New("bad request")
 	}
 	filter := bson.D{primitive.E{Key: "_id", Value: docID}}
