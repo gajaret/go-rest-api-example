@@ -117,3 +117,55 @@ Choose a command to run in go-rest-api-example:
 - Default Swagger Docs doesn't use generated OpenAPI3 Spec
 - Docker Run make targets are for build server for now
 - LintCI should be fixed
+
+## Running on Kubernetes
+
+### Requirements
+1. minikube
+2. kubectl
+
+### Steps
+1. We will use the minikube's internal Docker daemon to run and test our images. Through this we skip the need to pull images from artifactory.
+
+        eval $(minikube docker-env)
+
+2. Build the docker image
+
+        docker build -t goexample .
+
+3. Create a namespace so that we have all resources under a single separate scope
+        
+        kubectl create namespace goexample
+
+4. Create the Persistent Volume for mongoDB
+
+        kubectl create --namespace=goexample -f kubernetes/mongo-pv.yaml
+
+5. Create the Persistent Volume Claim for mongoDB
+
+        kubectl create --namespace=goexample -f kubernetes/mongo-pvc.yaml
+
+6. Create a deployment for mongoDB
+
+        kubectl create --namespace=goexample -f kubernetes/mongo-deployment.yaml
+
+7. Create a service for mongoDB
+
+        kubectl create --namespace=goexample -f kubernetes/mongo-svc.yaml
+
+8. Create a deployment for the API
+
+        kubectl create --namespace=goexample -f kubernetes/goexample-deployment.yaml
+
+9. Create a service for the API
+
+        kubectl create --namespace=goexample -f kubernetes/goexample-svc.yaml
+
+10. Create an ingress to expose the service out of the VM
+
+        kubectl create --namespace=goexample -f kubernetes/ingress.yaml
+
+11. Get the IP address of the minikube vm and the entry to the `/etc/hosts`
+
+        minikube ip
+        192.168.64.3 go-example.info
