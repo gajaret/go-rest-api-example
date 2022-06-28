@@ -2,13 +2,12 @@ package main
 
 import (
 	"flag"
-	"os"
-	"time"
-
 	"github.com/rameshsunkara/go-rest-api-example/internal/server"
 	"github.com/rameshsunkara/go-rest-api-example/pkg/util"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
+	"os"
+	"time"
 
 	_ "github.com/rameshsunkara/go-rest-api-example/docs"
 	"github.com/rameshsunkara/go-rest-api-example/internal/config"
@@ -50,9 +49,6 @@ func main() {
 
 	// Setup : Log
 	setupLog(*env)
-
-	runTime := os.Getenv("testenv")
-	log.Info().Str("Run Time", runTime).Msg("docker run")
 
 	// Load Configuration
 	config.LoadConfig(*env)

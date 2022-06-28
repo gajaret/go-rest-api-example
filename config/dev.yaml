@@ -2,4 +2,4 @@ server:
     port: 8080
 
 db:
-    dsn:  mongodb://goexample-mongodb:27017
+    dsn:  mongodb://admin:badpassword@localhost:27017
